@@ -1,29 +1,6 @@
 #!/usr/bin python
-from skimage import io
-from skimage.data import data_dir
-from skimage.util import img_as_ubyte
-from skimage.util import img_as_int
-import numpy
-from skimage.morphology import erosion, dilation, opening, closing, white_tophat
-from skimage.morphology import black_tophat, skeletonize, convex_hull_image
-from skimage.morphology import disk
-import time
-import picamera
-import os
-import shutil
-import datetime
-import fileinput
-import sys
-import logging
-import traceback
 
-import io
-import time
-import threading
-import picamera
-from PIL import Image, ImageMath
-from skimage import io as skimageio
-import numpy
+from imports_and_helper import *
 
 logging.basicConfig(level=logging.DEBUG,
                     format='(%(threadName)-10s) %(message)s',
@@ -33,76 +10,12 @@ counter = 0
 global logfile
 global PHP_SCRIPT
 global path_in
+
 path_in = '/var/www/images/default'
 global path_out
 path_out = '/var/www/images/default'
 global e
 e = threading.Event()
-
-def copyFilesWorker(e, t):
-    try:
-        """Wait t seconds and then timeout"""
-        doExit = False
-        LOGFILE = '/media/usb/images/logfileCopyFilesWorker.txt'
-        print "check path" 
-        if os.path.isfile(LOGFILE):
-            print "exists"
-            backupFile = LOGFILE + '%s.txt' %(datetime.date.today())
-            print backupFile
-            os.rename(LOGFILE, backupFile) 
-        logfile = open(LOGFILE, 'a')
-        logfile.write('CopyFilesWorker:\n')
-        while not doExit:
-            logfile.write('wait_for_event_timeout starting:\n')
-            logging.debug('wait_for_event_timeout starting')
-            event_is_set = e.wait(t)
-            logging.debug('event set: %s', event_is_set)
-            if event_is_set:
-                logging.debug('processing event')
-                logfile.write('processing event\n')
-                doExit = True
-            else:
-                logging.debug('Check if files to be copied are available.')
-                logfile.write('Check if files to be copied are available.\n')
-                src_files = os.listdir(path_in)
-                for file_name in src_files:
-                    full_file_name = os.path.join(path_in, file_name)
-                    if (os.path.isfile(full_file_name) and not os.path.exists(os.path.join(path_out, file_name))):
-                        logging.debug('copy ' + file_name)
-                        logfile.write('copy ' + file_name + '\n')
-                        #shutil.copyfile(full_file_name, path_out)
-                        shutil.copyfile(full_file_name, os.path.join(path_out, os.path.basename(full_file_name)))
-        logging.debug('Leaving copyFilesWorker()')
-        logfile.write('Leaving copyFilesWorker()\n')
-    except:
-        exc_type, exc_value, exc_traceback = sys.exc_info()
-        lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
-        msg = ''.join('!! ' + line for line in lines)
-        print "Unexpected error in copyFilesWorker(): ", msg
-        logfile.write(msg)
-    finally:
-        logfile.write("finally statement copyFilesWorker() reached.")
-        logfile.close()
-
-def setPixelNeighborhood(img, x, y, neighborPixel_x, neighborPixel_y):
-    width, height = img.size
-    pixels = img.load() # create the pixel map
-    
-    for i in range(x, x+neighborPixel_x):
-        for j in range(y, y+neighborPixel_y):
-            if (i < width) and (j < height):
-                pixels[i,j] = (255, 255, 255) # set the colour white
-
-def maskBackground(img, x, y, neighborPixel_x, neighborPixel_y):
-    width, height = img.size
-    pixels = img.load() # create the pixel map
-    
-    for i in range(width):
-        for j in range(height):
-            if ( (i > x) and (i < (x+neighborPixel_x)) and (j > y) and (j < (y+neighborPixel_y)) ):
-                pass
-            else:
-                pixels[i,j] = (255, 255, 255) # set the colour white
                 
 def wait(image1, filename_current, image0, filename_last):
     print"\n%s\n" %(time.ctime())
@@ -116,8 +29,12 @@ def wait(image1, filename_current, image0, filename_last):
         #image0_cropped = image0.crop((560, 210, 1020, 560)) #1280x960
         #image1_cropped = image1.crop((540, 30, 2230, 1460)) #2592x1944
         #image0_cropped = image0.crop((540, 30, 2230, 1460)) #2592x1944
+        width, height = image1.size
+        print "width = %d, height = %d" %(width, height)
         image1_cropped = image1.crop((395, 5, 1640, 1080)) #1920x1440
         image0_cropped = image0.crop((395, 5, 1640, 1080)) #1920x1440
+        width, height = image1_cropped.size
+        print "width_cropped = %d, height_cropped = %d" %(width, height)
         diff = numpy.array(ImageMath.eval('abs(int(a) - int(b))', a=image1_cropped, b=image0_cropped))
         #diff = numpy.array(ImageMath.eval('abs(int(a) - int(b))', a=image1, b=image0))
         end = time.clock()
@@ -167,7 +84,7 @@ class Config:
     active_time_stop_m = ''
     php_script = ''
     image_folder_root = ''
-    
+
 def readConfigFile():
     CONFIG_FILE = '/var/www/surveillance_config.txt'
     config = Config()
@@ -209,35 +126,18 @@ def readConfigFile():
     print "image_folder_root = %s" %config.image_folder_root
     return config
     
-#use this method because it does not change permission
-def replace(file,searchExp,replaceExp):
-    for line in fileinput.input(file, inplace=1):
-        if searchExp in line:
-            line = line.replace(searchExp,replaceExp)
-        sys.stdout.write(line)
-
 def ensure_dir(directory):
     if not os.path.exists(directory):
     	print 'create directory: ' + directory
         os.makedirs(directory)
         updatePhpScript()
         global PHP_SCRIPT
+        #shutil.copy(PHP_SCRIPT, os.path.join(directory,"__showAllImages.php"))
         shutil.copyfile(PHP_SCRIPT, os.path.join(directory,"__showAllImages.php"))
         return False
     else:
         return True
-        
-def updatePhpScript():
-    global today
-    linestring = open(PHP_SCRIPT, 'r').read()
-    start = linestring.find('"') + 1
-    end = linestring.find('"', start)
-    yesterday = linestring[start:end] #letzter eingetragener Ordner
-    today = datetime.date.today()
-    print "replace %s in showAllImages_php by %s" %(str(yesterday), str(today))
-    global PHP_SCRIPT
-    replace(PHP_SCRIPT,str(yesterday),str(today))
-    
+
 def getFolderSize(folder, idle):
     if(idle == True):
         total_size = os.path.getsize(folder)
@@ -251,6 +151,25 @@ def getFolderSize(folder, idle):
     else:
         time.sleep(0.5)
         return 0
+
+#use this method because it does not change permission
+def replace(file,searchExp,replaceExp):
+    for line in fileinput.input(file, inplace=1):
+        if searchExp in line:
+            line = line.replace(searchExp,replaceExp)
+        sys.stdout.write(line)
+
+        
+def updatePhpScript():
+    global today
+    linestring = open(PHP_SCRIPT, 'r').read()
+    start = linestring.find('"') + 1
+    end = linestring.find('"', start)
+    yesterday = linestring[start:end] #letzter eingetragener Ordner
+    today = datetime.date.today()
+    print "replace %s in showAllImages_php by %s" %(str(yesterday), str(today))
+    global PHP_SCRIPT
+    replace(PHP_SCRIPT,str(yesterday),str(today))
 
 try:
     # Create a pool of image processors
