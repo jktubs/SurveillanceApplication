@@ -41,7 +41,6 @@ try:
     camera = picamera.PiCamera()
     camera.resolution = (1920, 1440)
     camera.framerate = 30
-
     path_image_to_take = '/var/www/images/currentImage/currentImage_org.jpg'
     camera.capture(path_image_to_take)
 

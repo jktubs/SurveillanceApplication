@@ -16,6 +16,10 @@ global path_out
 path_out = '/var/www/images/default'
 global e
 e = threading.Event()
+
+global folder_size_threshold
+folder_size_threshold = 15*1024*1024*1024 #15 GB
+
                 
 def wait(image1, filename_current, image0, filename_last):
     print"\n%s\n" %(time.ctime())
@@ -247,7 +251,7 @@ try:
                         measurement_end = time.clock()
                         log = "getFolderSize() took: %.3f s\n" %(measurement_end-measurement_begin)
                         print "folderSize = %d Bytes" %(folderSize)
-                        if(folderSize > 5000*1000000): #5000 MB
+                        if(folderSize > folder_size_threshold):
                             log = "Exit due to too large directory (%d Bytes)\n" %folderSize
                             logfile.write(log)
                             print log
@@ -260,19 +264,23 @@ try:
                         global path_out
                         path_out = '/media/usb/box/Surveillance_Images/' + '%s/' %(datetime.date.today())
                         #ensure_dir(path_out)
-                        last_image = CURRENT_IMAGE_FOLDER_PATH + 'image%015d.jpg' %(counter)
+                        now = datetime.datetime.now()
+                        #last_image = CURRENT_IMAGE_FOLDER_PATH + 'image%015d.jpg' %(counter)
+                        last_image = CURRENT_IMAGE_FOLDER_PATH + '%s.jpg' %(now)
                         counter += 1
-                        current_image = CURRENT_IMAGE_FOLDER_PATH + 'image%015d.jpg' %(counter)
+                        now = datetime.datetime.now()
+                        #current_image = CURRENT_IMAGE_FOLDER_PATH + 'image%015d.jpg' %(counter)
+                        current_image = CURRENT_IMAGE_FOLDER_PATH + '%s.jpg' %(now)
                         if(RUN_MODE == 'Exit'):
                             done=True
                         runTimeBegin_h = int(config.active_time_start_h)
                         runTimeBegin_m = int(config.active_time_start_m)
                         runTimeEnd_h   = int(config.active_time_stop_h)
                         runTimeEnd_m   = int(config.active_time_stop_m)
-                        now = datetime.datetime.now()
                         begin_time = datetime.datetime(now.year,now.month,now.day,runTimeBegin_h,runTimeBegin_m)
                         end_time   = datetime.datetime(now.year,now.month,now.day,runTimeEnd_h,runTimeEnd_m)
                         logfile.write(log)
+                        now = datetime.datetime.now()
                         if( (now >= begin_time) and (now <= end_time) and (RUN_MODE == 'Active')):
                             idle = False
                             wait_begin = time.clock()
