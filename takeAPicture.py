@@ -51,7 +51,10 @@ try:
     setPixelNeighborhood(image,  640,  735, 20, 20) #1920x1440
     setPixelNeighborhood(image, 1300, 1065, 20, 20) #1920x1440
     io.imsave('/var/www/images/currentImage/currentImage.jpg', image)
-
+except Exception as e:
+    print "takeAPicture.py exception: \n"
+    print e
+	
 finally:
     print "finally camera.close()"
     camera.close()

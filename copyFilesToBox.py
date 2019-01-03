@@ -1,4 +1,5 @@
 import sys
+import subprocess
 import io
 import os
 import shutil
@@ -38,9 +39,23 @@ def copyFilesToDropbox(path_in, path_out):
             full_file_name = os.path.join(path_in, file_name)
             if (os.path.isfile(full_file_name)):
                 logging.debug('copy %s', file_name)
-                cmd = 'rclone copy \'' + full_file_name + '\' ' + path_out
+                cmd = 'rclone check \'' + full_file_name + '\' ' + path_out
                 print cmd + '\n'
-                os.system(cmd)
+                p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+                out, err = p.communicate()
+                print out
+                print err
+                if(out.find('0 differences found') != -1):
+                	print full_file_name + ' identical already in Dropbox\n'
+                else:
+                    print full_file_name + ' not identical in Dropbox yet. Uploading ... \n'
+                    cmd = 'rclone copy \'' + full_file_name + '\' ' + path_out
+                    print cmd + '\n'
+                    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+                    out, err = p.communicate()
+                    print out
+                    print err
+
         logging.debug('Leaving copyFilesWorker()')
     except:
         exc_type, exc_value, exc_traceback = sys.exc_info()
