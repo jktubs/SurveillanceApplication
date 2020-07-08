@@ -4,4 +4,4 @@ This project is intended for ...
 
 Todos: 
 
-- blabla
+- Tests to be implemented
